@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class ConsumerScreen extends StatefulWidget {
   const ConsumerScreen({Key? key}) : super(key: key);
@@ -13,6 +13,19 @@ class _ConsumerScreenState extends State<ConsumerScreen> {
   late List<Map<String, String>> _sustainabilityTips;
   bool _isLoading = true;
 
+  final Map<String, String> _recipeVideoIds = {
+    'Vegetable Stir Fry': 'deoawaSi5Xs',
+    'Fruit Smoothie': '4wX3iSmD5cI',
+    'Quinoa Salad': 'QwE4UZ2vukE',
+    'Lentil Soup': 'oi-dcSkR-FQ',
+    'Baked Salmon': 'Y1FVEhpQMlc',
+    'Vegetarian Chili': 'Lw8ys1J-yOk',
+    'Greek Yogurt Parfait': 'uWdpEsa0Rm8',
+    'Spinach and Mushroom Omelette': 'qWy6kz0BJG0',
+    'Roasted Vegetable Medley': 'Zw-7QMkHSRk',
+    'Whole Grain Pasta Primavera': 'qPQ_42-Qb8Q',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -20,7 +33,6 @@ class _ConsumerScreenState extends State<ConsumerScreen> {
   }
 
   Future<void> _fetchData() async {
-    // Simulate API call delay
     await Future.delayed(const Duration(seconds: 1));
     setState(() {
       _recipes = _generateRecipes();
@@ -203,12 +215,24 @@ class _ConsumerScreenState extends State<ConsumerScreen> {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(description),
         trailing: IconButton(
-          icon: const Icon(Icons.arrow_forward),
+          icon: const Icon(Icons.play_circle_fill),
           onPressed: () {
-            // TODO: Implement recipe detail view
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Opening recipe for $title')),
-            );
+            // Check if video ID is valid before navigating
+            if (_recipeVideoIds[title]?.isNotEmpty ?? false) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecipeVideoScreen(
+                    title: title,
+                    videoId: _recipeVideoIds[title] ?? '',
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Invalid video ID")),
+              );
+            }
           },
         ),
       ),
@@ -224,12 +248,61 @@ class _ConsumerScreenState extends State<ConsumerScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: ListTile(
             leading: Icon(Icons.eco, color: Colors.green[500]),
-            title: Text(_sustainabilityTips[index]['title']!,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(_sustainabilityTips[index]['title']!),
             subtitle: Text(_sustainabilityTips[index]['description']!),
           ),
         );
       },
+    );
+  }
+}
+
+class RecipeVideoScreen extends StatefulWidget {
+  final String title;
+  final String videoId;
+
+  const RecipeVideoScreen(
+      {Key? key, required this.title, required this.videoId})
+      : super(key: key);
+
+  @override
+  _RecipeVideoScreenState createState() => _RecipeVideoScreenState();
+}
+
+class _RecipeVideoScreenState extends State<RecipeVideoScreen> {
+  late YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = YoutubePlayerController(
+      initialVideoId: widget.videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: Center(
+        child: YoutubePlayer(
+          controller: _controller,
+          showVideoProgressIndicator: true,
+          progressIndicatorColor: Colors.blueAccent,
+        ),
+      ),
     );
   }
 }
