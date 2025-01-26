@@ -12,13 +12,13 @@ dependencies:
     sdk: flutter
   provider: ^6.0.5
   shared_preferences: ^2.2.1
-  google_maps_flutter: ^2.4.0
+  flutter_map: ^5.0.0
+  latlong2: ^0.9.0
   intl: ^0.18.1
   http: ^1.1.0
   flutter_local_notifications: ^15.1.0+1
   path_provider: ^2.1.1
   sqflite: ^2.3.0
-  flutter_map: ^5.0.0
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +27,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+

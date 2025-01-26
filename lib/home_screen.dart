@@ -3,6 +3,7 @@ import 'distribution_screen.dart';
 import 'inventory_screen.dart';
 import 'consumer_screen.dart';
 import 'settings_screen.dart';
+import 'esg_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -15,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
+    const ESGDetailsScreen(),
     const DistributionScreen(),
     const InventoryScreen(),
     const ConsumerScreen(),
@@ -43,6 +45,10 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedItemColor: Theme.of(context).primaryColor,
           unselectedItemColor: Theme.of(context).primaryColor.withOpacity(0.5),
           items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.eco),
+              label: 'ESG',
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.map),
               label: 'Distribution',
