@@ -18,12 +18,12 @@ class _ConsumerScreenState extends State<ConsumerScreen> {
     'Fruit Smoothie': '4wX3iSmD5cI',
     'Quinoa Salad': 'QwE4UZ2vukE',
     'Lentil Soup': 'oi-dcSkR-FQ',
-    'Baked Salmon': 'Y1FVEhpQMlc',
-    'Vegetarian Chili': 'Lw8ys1J-yOk',
-    'Greek Yogurt Parfait': 'uWdpEsa0Rm8',
-    'Spinach and Mushroom Omelette': 'qWy6kz0BJG0',
-    'Roasted Vegetable Medley': 'Zw-7QMkHSRk',
-    'Whole Grain Pasta Primavera': 'qPQ_42-Qb8Q',
+    'Baked Salmon': '2uYoqclu6so',
+    'Vegetarian Chili': 'oy1u49dLgaE',
+    'Greek Yogurt Parfait': '6rglgwP-r50',
+    'Spinach and Mushroom Omelette': 'FLwB5r68iO8',
+    'Roasted Vegetable Medley': 'GTqZg-JIhA4',
+    'Whole Grain Pasta Primavera': 'j1hAAcPay1w',
   };
 
   @override
