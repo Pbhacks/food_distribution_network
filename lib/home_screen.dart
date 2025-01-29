@@ -5,6 +5,7 @@ import 'consumer_screen.dart';
 import 'settings_screen.dart';
 import 'esg_details_screen.dart';
 import 'ai_chatbot_screen.dart';
+import 'warehouse_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const InventoryScreen(),
     const ConsumerScreen(),
     const AIChatbotScreen(),
+    const WarehouseManagementScreen(),
     const SettingsScreen(),
   ];
 
@@ -66,6 +68,10 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.chat),
               label: 'AI Chat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.warehouse),
+              label: 'Warehouses',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings),
