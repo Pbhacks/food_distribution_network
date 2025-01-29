@@ -122,10 +122,32 @@ class _AIChatbotScreenState extends State<AIChatbotScreen> {
 
   Future<String> _getAIResponse(String query) async {
     try {
+      // Basic keyword filtering for food-related queries
+      final foodKeywords = [
+        'food',
+        'meal',
+        'recipe',
+        'ingredients',
+        'sustainability',
+        'nutrition',
+        'diet',
+        'cooking',
+        'kitchen'
+      ];
+
+      bool isFoodRelated =
+          foodKeywords.any((keyword) => query.toLowerCase().contains(keyword));
+
+      if (!isFoodRelated) {
+        return 'Sorry, I can only assist with food-related questions.';
+      }
+
+      // If the query is food-related, continue with the AI response generation
       final prompt =
-          'You are a food and sustainability expert. Answer the following question: $query';
+          'You are a food and sustainability expert. Answer the following food-related question: $query';
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
+
       return response.text ?? 'Sorry, I couldn\'t generate a response.';
     } catch (e) {
       return 'Sorry, I encountered an error while processing your request: $e';
