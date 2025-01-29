@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({Key? key}) : super(key: key);
@@ -30,6 +32,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           quantity: productMap['quantity'],
           price: productMap['price'],
           expiryDate: DateTime.parse(productMap['expiryDate']),
+          imageUrl: productMap['imageUrl'] ?? '',
         );
       }).toList();
     });
@@ -43,9 +46,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
               'quantity': product.quantity,
               'price': product.price,
               'expiryDate': product.expiryDate.toIso8601String(),
+              'imageUrl': product.imageUrl,
             }))
         .toList();
     await prefs.setStringList('products', productsJson);
+  }
+
+  Color _getExpiryColor(DateTime expiryDate) {
+    final now = DateTime.now();
+    final daysLeft = expiryDate.difference(now).inDays;
+    if (daysLeft < 7) {
+      return Colors.red;
+    } else if (daysLeft < 30) {
+      return Colors.orange;
+    } else {
+      return Colors.green;
+    }
   }
 
   @override
@@ -60,13 +76,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
           final product = _products[index];
           return Card(
             child: ListTile(
+              leading: product.imageUrl.isNotEmpty
+                  ? Image.file(File(product.imageUrl),
+                      width: 50, height: 50, fit: BoxFit.cover)
+                  : const Icon(Icons.image, size: 50),
               title: Text(product.name),
               subtitle: Text(
                   'Quantity: ${product.quantity}, Expiry: ${DateFormat('yyyy-MM-dd').format(product.expiryDate)}'),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () => _deleteProduct(index),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle,
+                      color: _getExpiryColor(product.expiryDate)),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteProduct(index),
+                  ),
+                ],
               ),
+              onLongPress: () => _deleteProduct(index),
             ),
           );
         },
@@ -83,6 +111,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final quantityController = TextEditingController();
     final priceController = TextEditingController();
     DateTime selectedDate = DateTime.now();
+    String imagePath = '';
+
+    Future<void> _pickImage() async {
+      final pickedFile =
+          await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          imagePath = pickedFile.path;
+        });
+      }
+    }
 
     showDialog(
       context: context,
@@ -117,12 +156,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       firstDate: DateTime.now(),
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
-                    if (picked != null && picked != selectedDate) {
+                    if (picked != null) {
                       setState(() {
                         selectedDate = picked;
                       });
                     }
                   },
+                ),
+                ElevatedButton(
+                  onPressed: _pickImage,
+                  child: const Text('Pick Image'),
                 ),
               ],
             ),
@@ -143,6 +186,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     int.parse(quantityController.text),
                     double.parse(priceController.text),
                     selectedDate,
+                    imagePath,
                   );
                   Navigator.of(context).pop();
                 }
@@ -154,14 +198,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _addProduct(
-      String name, int quantity, double price, DateTime expiryDate) {
+  void _addProduct(String name, int quantity, double price, DateTime expiryDate,
+      String imageUrl) {
     setState(() {
       _products.add(Product(
         name: name,
         quantity: quantity,
         price: price,
         expiryDate: expiryDate,
+        imageUrl: imageUrl,
       ));
       _saveProducts();
     });
@@ -180,11 +225,13 @@ class Product {
   final int quantity;
   final double price;
   final DateTime expiryDate;
+  final String imageUrl;
 
   Product({
     required this.name,
     required this.quantity,
     required this.price,
     required this.expiryDate,
+    required this.imageUrl,
   });
 }
