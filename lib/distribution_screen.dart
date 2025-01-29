@@ -20,6 +20,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
   bool _isSearchVisible = false;
+  bool _isCalculatingRoute = false;
 
   @override
   void initState() {
@@ -28,42 +29,49 @@ class _DistributionScreenState extends State<DistributionScreen> {
   }
 
   Future<void> _checkLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
     try {
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      // First check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Location services are disabled. Please enable the services'),
-        ));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Location services are disabled. Please enable them in settings.'),
+          ));
+        }
         return;
       }
 
-      permission = await Geolocator.checkPermission();
+      // Then check for permissions
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Location permissions are denied'),
-          ));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Location permissions are denied. Some features may not work.'),
+            ));
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Location permissions are permanently denied, we cannot request permissions.'),
-        ));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Location permissions are permanently denied. Please enable them in settings.'),
+          ));
+        }
         return;
       }
     } catch (e) {
-      print('Error checking location permission: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error checking location permission: $e'),
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error checking location permission: $e'),
+        ));
+      }
     }
   }
 
@@ -192,6 +200,60 @@ class _DistributionScreenState extends State<DistributionScreen> {
     }
   }
 
+  Future<void> _getRoutePoints() async {
+    if (_routePoints.length < 2 || _isCalculatingRoute) return;
+
+    setState(() {
+      _isLoading = true;
+      _isCalculatingRoute = true;
+    });
+
+    List<LatLng> newRoutePoints = [];
+
+    try {
+      // Calculate route between last two points only
+      LatLng start = _routePoints[_routePoints.length - 2];
+      LatLng end = _routePoints[_routePoints.length - 1];
+
+      String url = 'https://router.project-osrm.org/route/v1/driving/'
+          '${start.longitude},${start.latitude};${end.longitude},${end.latitude}'
+          '?overview=full&geometries=geojson';
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<dynamic> coordinates =
+            data['routes'][0]['geometry']['coordinates'];
+
+        // Keep existing route points
+        newRoutePoints.addAll(_routePoints.sublist(0, _routePoints.length - 2));
+
+        // Add new route segment
+        for (var coord in coordinates) {
+          newRoutePoints.add(LatLng(coord[1], coord[0]));
+        }
+
+        setState(() {
+          _routePoints = newRoutePoints;
+        });
+      }
+    } catch (e) {
+      print('Error getting route points: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Error: Unable to get route. Please try again.')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+        _isCalculatingRoute = false;
+      });
+    }
+  }
+
   void _optimizeRoute() {
     if (_routePoints.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -223,54 +285,6 @@ class _DistributionScreenState extends State<DistributionScreen> {
       _markers.clear();
       _routePoints.clear();
     });
-  }
-
-  Future<void> _getRoutePoints() async {
-    if (_routePoints.length < 2) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    List<LatLng> newRoutePoints = [];
-
-    try {
-      for (int i = 0; i < _routePoints.length - 1; i++) {
-        LatLng start = _routePoints[i];
-        LatLng end = _routePoints[i + 1];
-
-        String url = 'https://router.project-osrm.org/route/v1/driving/'
-            '${start.longitude},${start.latitude};${end.longitude},${end.latitude}'
-            '?overview=full&geometries=geojson';
-
-        final response = await http.get(Uri.parse(url));
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          List<dynamic> coordinates =
-              data['routes'][0]['geometry']['coordinates'];
-
-          for (var coord in coordinates) {
-            newRoutePoints.add(LatLng(coord[1], coord[0]));
-          }
-        }
-      }
-
-      setState(() {
-        _routePoints.clear();
-        _routePoints.addAll(newRoutePoints);
-      });
-    } catch (e) {
-      print('Error getting route points: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Error: Unable to get route. Please try again.')),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   void _searchPlaces(String query) async {
@@ -306,18 +320,22 @@ class _DistributionScreenState extends State<DistributionScreen> {
 
           _mapController.move(latLng, 14);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No results found for "$query"')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('No results found for "$query"')),
+            );
+          }
         }
       }
     } catch (e) {
       print('Error searching places: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Error: Unable to search for places. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Error: Unable to search for places. Please try again.')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -331,26 +349,48 @@ class _DistributionScreenState extends State<DistributionScreen> {
     });
 
     try {
-      final position = await Geolocator.getCurrentPosition();
-      final latLng = LatLng(position.latitude, position.longitude);
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled');
+      }
 
-      setState(() {
-        _markers.add(Marker(
-          width: 40.0,
-          height: 40.0,
-          point: latLng,
-          builder: (ctx) =>
-              const Icon(Icons.my_location, color: Colors.blue, size: 40),
-        ));
-        _routePoints.add(latLng);
-      });
+      // Check for permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission denied');
+      }
 
-      _mapController.move(latLng, 14);
+      // Get position with timeout
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+
+      if (mounted) {
+        final latLng = LatLng(position.latitude, position.longitude);
+
+        setState(() {
+          _markers.add(Marker(
+            width: 40.0,
+            height: 40.0,
+            point: latLng,
+            builder: (ctx) =>
+                const Icon(Icons.my_location, color: Colors.blue, size: 40),
+          ));
+          _routePoints.add(latLng);
+        });
+
+        _mapController.move(latLng, 14);
+      }
     } catch (e) {
       print('Error getting current location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting current location: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error getting current location: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
